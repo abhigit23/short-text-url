@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import CopyButton from "./copy-button";
+import PasswordInput from "./password-input";
 
 const EXPIRY_OPTIONS = [
   { value: "never", label: "Never expire" },
@@ -84,6 +85,7 @@ export default function PasteEditor() {
   return (
     <form
       onSubmit={handleSubmit}
+      autoComplete="off"
       className="flex w-full max-w-3xl flex-col gap-4"
     >
       <textarea
@@ -112,12 +114,10 @@ export default function PasteEditor() {
 
         <label className="flex flex-col gap-1">
           <span className="text-sm font-medium">Password (optional)</span>
-          <input
-            type="password"
+          <PasswordInput
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={setPassword}
             placeholder="Protect with a password"
-            className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-zinc-700 dark:bg-zinc-900"
           />
         </label>
 

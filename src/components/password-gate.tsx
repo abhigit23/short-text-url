@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import CopyButton from "./copy-button";
+import PasswordInput from "./password-input";
 
 type ViewState = { status: "locked" } | { status: "success"; content: string; burn: boolean } | { status: "error"; message: string };
 
@@ -54,19 +55,19 @@ export default function PasswordGate({ code }: { code: string }) {
   return (
     <form
       onSubmit={handleSubmit}
+      autoComplete="off"
       className="mx-auto flex w-full max-w-md flex-col gap-4 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8 dark:border-zinc-800 dark:bg-zinc-900"
     >
       <h2 className="text-lg font-semibold">This paste is password protected</h2>
       <p className="text-sm text-zinc-500 dark:text-zinc-400">
         Enter the password to view the content.
       </p>
-      <input
-        type="password"
+      <PasswordInput
         value={password}
-        onChange={(e) => setPassword(e.target.value)}
+        onChange={setPassword}
         placeholder="Password"
         autoFocus
-        className="rounded-md border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-zinc-700 dark:bg-zinc-800"
+        className="dark:bg-zinc-800"
       />
       {view.status === "error" && (
         <p className="text-sm text-red-600">{view.message}</p>
