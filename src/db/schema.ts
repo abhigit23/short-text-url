@@ -5,6 +5,8 @@ import {
   boolean,
   timestamp,
   index,
+  uuid,
+  text,
   customType,
 } from "drizzle-orm/pg-core";
 
@@ -48,5 +50,30 @@ export const pastes = pgTable(
   ]
 );
 
+export const attachments = pgTable(
+  "attachments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    pasteCode: varchar("paste_code", { length: 12 })
+      .notNull()
+      .references(() => pastes.code, { onDelete: "cascade" }),
+    filename: text("filename").notNull(),
+    mime: text("mime").notNull(),
+    size: integer("size").notNull(),
+    compression: text("compression").notNull().default("deflate"),
+    blobPath: text("blob_path").notNull(),
+    iv: bytea("iv").notNull(),
+    authTag: bytea("auth_tag").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("attachments_paste_code_idx").on(table.pasteCode),
+  ]
+);
+
 export type Paste = typeof pastes.$inferSelect;
 export type NewPaste = typeof pastes.$inferInsert;
+export type Attachment = typeof attachments.$inferSelect;
+export type NewAttachment = typeof attachments.$inferInsert;

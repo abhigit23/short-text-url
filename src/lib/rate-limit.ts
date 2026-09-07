@@ -3,7 +3,7 @@ import { Redis } from "@upstash/redis";
 import type { NextRequest } from "next/server";
 
 const UPS_ENABLED =
-  !!process.env.UPSTASH_REDIS_REST_URL && !!process.env.UPSTASH_REDIS_REST_TOKEN;
+  !!process.env.KV_REST_API_URL && !!process.env.KV_REST_API_TOKEN;
 
 let createLimiter: Ratelimit | null = null;
 let readLimiter: Ratelimit | null = null;

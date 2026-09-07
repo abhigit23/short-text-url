@@ -8,6 +8,13 @@
       "when": 1787978020547,
       "tag": "0000_whole_the_fury",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788797631450,
+      "tag": "0001_chemical_silk_fever",
+      "breakpoints": true
     }
   ]
 }

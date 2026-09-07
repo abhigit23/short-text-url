@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createPasteSchema } from "@/lib/validation";
+import { Buffer } from "node:buffer";
+import { createPasteSchema, createPasteFilesSchema } from "@/lib/validation";
 import {
   encryptContent,
   generateContentKey,
   wrapKey,
   deriveKeyFromPassword,
+  KDF_ITERATIONS,
 } from "@/lib/crypto";
-import { createPaste } from "@/lib/paste-service";
+import { createPaste, addAttachments } from "@/lib/paste-service";
 import { checkCreateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -36,16 +38,47 @@ export async function POST(req: NextRequest) {
   }
   const input = parsed.data;
 
+  const filesParsed = createPasteFilesSchema.safeParse(input.files ?? []);
+  if (!filesParsed.success) {
+    return NextResponse.json(
+      { error: filesParsed.error.issues[0]?.message ?? "Invalid files" },
+      { status: 400 }
+    );
+  }
+  const files = filesParsed.data;
+
+  if (input.burnAfterRead && files.length > 0) {
+    return NextResponse.json(
+      { error: "Burn-after-read pastes cannot have file attachments" },
+      { status: 400 }
+    );
+  }
+
   let contentKey: Buffer;
   let salt: Buffer | null = null;
   let kdfIterations: number | null = null;
   const password = input.password?.trim() ?? "";
 
   if (password) {
-    const derived = deriveKeyFromPassword(password);
+    // Password pastes with files must pass a client-generated salt so the
+    // client's PBKDF2 key (used to encrypt the file blobs) matches the server's.
+    if (files.length > 0 && !input.salt) {
+      return NextResponse.json(
+        { error: "Missing salt for password-protected attachments" },
+        { status: 400 }
+      );
+    }
+    const derived = deriveKeyFromPassword(
+      password,
+      input.salt ? Buffer.from(input.salt, "base64") : undefined
+    );
     contentKey = derived.key;
     salt = derived.salt;
-    kdfIterations = 210_000;
+    kdfIterations = KDF_ITERATIONS;
+  } else if (input.contentKey) {
+    // Non-password pastes with files: reuse the client's key so file blobs and
+    // text share one wrapped content key.
+    contentKey = Buffer.from(input.contentKey, "base64");
   } else {
     contentKey = generateContentKey();
   }
@@ -72,6 +105,29 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     console.error("createPaste failed", e);
     return NextResponse.json({ error: "Failed to create paste" }, { status: 500 });
+  }
+
+  if (files.length > 0) {
+    try {
+      await addAttachments(
+        files.map((f) => ({
+          pasteCode: paste.code,
+          filename: f.filename,
+          mime: f.mime,
+          size: f.size,
+          compression: f.compression,
+          blobPath: f.pathname,
+          iv: Buffer.from(f.iv, "base64"),
+          authTag: Buffer.from(f.authTag, "base64"),
+        }))
+      );
+    } catch (e) {
+      console.error("addAttachments failed", e);
+      return NextResponse.json(
+        { error: "Failed to save attachments" },
+        { status: 500 }
+      );
+    }
   }
 
   const base = (process.env.APP_URL ?? "").replace(/\/$/, "");

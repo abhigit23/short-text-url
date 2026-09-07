@@ -3,8 +3,12 @@
 import { useState } from "react";
 import CopyButton from "./copy-button";
 import PasswordInput from "./password-input";
+import PasteFiles, { type AttachmentMeta } from "./paste-files";
 
-type ViewState = { status: "locked" } | { status: "success"; content: string; burn: boolean } | { status: "error"; message: string };
+type ViewState =
+  | { status: "locked" }
+  | { status: "success"; content: string; burn: boolean; attachments: AttachmentMeta[] }
+  | { status: "error"; message: string };
 
 export default function PasswordGate({ code }: { code: string }) {
   const [password, setPassword] = useState("");
@@ -27,7 +31,12 @@ export default function PasswordGate({ code }: { code: string }) {
         setLoading(false);
         return;
       }
-      setView({ status: "success", content: data.content, burn: data.burnAfterRead });
+      setView({
+        status: "success",
+        content: data.content,
+        burn: data.burnAfterRead,
+        attachments: data.attachments ?? [],
+      });
     } catch {
       setView({ status: "error", message: "Network error" });
       setLoading(false);
@@ -48,6 +57,7 @@ export default function PasswordGate({ code }: { code: string }) {
         <pre className="max-h-[70vh] w-full overflow-auto whitespace-pre-wrap break-words rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-left font-mono text-sm leading-relaxed sm:p-6 dark:border-zinc-800 dark:bg-zinc-950">
           {view.content}
         </pre>
+        <PasteFiles code={code} attachments={view.attachments} password={password} />
       </div>
     );
   }

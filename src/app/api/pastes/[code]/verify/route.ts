@@ -4,6 +4,8 @@ import {
   getPasteByCode,
   deletePaste,
   incrementViews,
+  getAttachmentsByCode,
+  deleteAttachmentsBlobs,
 } from "@/lib/paste-service";
 import { decryptContent, deriveKeyFromPassword } from "@/lib/crypto";
 import { checkReadLimit } from "@/lib/rate-limit";
@@ -78,9 +80,12 @@ export async function POST(
 
   await incrementViews(code);
 
+  const attachments = await getAttachmentsByCode(code);
+
   const isBurn = paste.burnAfterRead;
   if (isBurn) {
     // Delete immediately so a refresh/prefetch cannot read it again.
+    await deleteAttachmentsBlobs(code);
     await deletePaste(code);
   }
 
@@ -88,5 +93,11 @@ export async function POST(
     content: plaintext.toString("utf8"),
     burnAfterRead: isBurn,
     expiresAt: paste.expiresAt?.toISOString() ?? null,
+    attachments: attachments.map((a) => ({
+      id: a.id,
+      filename: a.filename,
+      mime: a.mime,
+      size: a.size,
+    })),
   });
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import CopyButton from "./copy-button";
+import PasteFiles, { type AttachmentMeta } from "./paste-files";
 
 type Props = {
   code: string;
@@ -10,7 +11,7 @@ type Props = {
 
 type ViewState =
   | { status: "waiting" }
-  | { status: "success"; content: string; burn: boolean }
+  | { status: "success"; content: string; burn: boolean; attachments: AttachmentMeta[]; password?: string }
   | { status: "error"; message: string };
 
 export default function PasteReveal({ code, burnAfterRead }: Props) {
@@ -30,7 +31,12 @@ export default function PasteReveal({ code, burnAfterRead }: Props) {
         setLoading(false);
         return;
       }
-      setView({ status: "success", content: data.content, burn: data.burnAfterRead });
+      setView({
+        status: "success",
+        content: data.content,
+        burn: data.burnAfterRead,
+        attachments: data.attachments ?? [],
+      });
     } catch {
       setView({ status: "error", message: "Network error" });
       setLoading(false);
@@ -51,6 +57,7 @@ export default function PasteReveal({ code, burnAfterRead }: Props) {
         <pre className="max-h-[70vh] w-full overflow-auto whitespace-pre-wrap break-words rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-left font-mono text-sm leading-relaxed sm:p-6 dark:border-zinc-800 dark:bg-zinc-950">
           {view.content}
         </pre>
+        <PasteFiles code={code} attachments={view.attachments} />
       </div>
     );
   }

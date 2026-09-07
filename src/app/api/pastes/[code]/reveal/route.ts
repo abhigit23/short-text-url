@@ -3,6 +3,8 @@ import {
   getPasteByCode,
   deletePaste,
   incrementViews,
+  getAttachmentsByCode,
+  deleteAttachmentsBlobs,
 } from "@/lib/paste-service";
 import { unwrapKey, decryptContent } from "@/lib/crypto";
 import { checkReadLimit } from "@/lib/rate-limit";
@@ -61,10 +63,13 @@ export async function POST(
     return NextResponse.json({ error: "Decryption failed" }, { status: 500 });
   }
 
+  const attachments = await getAttachmentsByCode(code);
+
   await incrementViews(code);
 
   const isBurn = paste.burnAfterRead;
   if (isBurn) {
+    await deleteAttachmentsBlobs(code);
     await deletePaste(code);
   }
 
@@ -72,5 +77,11 @@ export async function POST(
     content: plaintext.toString("utf8"),
     burnAfterRead: isBurn,
     expiresAt: paste.expiresAt?.toISOString() ?? null,
+    attachments: attachments.map((a) => ({
+      id: a.id,
+      filename: a.filename,
+      mime: a.mime,
+      size: a.size,
+    })),
   });
 }
