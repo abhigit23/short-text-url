@@ -54,7 +54,7 @@ export default function PasteReveal({ code, burnAfterRead }: Props) {
             <CopyButton text={view.content} />
           </div>
         </div>
-        <pre className="max-h-[70vh] w-full overflow-auto whitespace-pre-wrap break-words rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-left font-mono text-sm leading-relaxed sm:p-6 dark:border-zinc-800 dark:bg-zinc-950">
+        <pre className="max-h-[70vh] w-full overflow-auto whitespace-pre-wrap wrap-break-word rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-left font-mono text-sm leading-relaxed sm:p-6 dark:border-zinc-800 dark:bg-zinc-950">
           {view.content}
         </pre>
         <PasteFiles code={code} attachments={view.attachments} />

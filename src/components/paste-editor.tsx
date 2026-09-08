@@ -70,7 +70,7 @@ export default function PasteEditor() {
     setFiles((prev) => prev.filter((_, i) => i !== index));
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
     setError(null);
@@ -190,7 +190,7 @@ export default function PasteEditor() {
         value={content}
         onChange={(e) => setContent(e.target.value)}
         placeholder="Paste or type your text here..."
-        className="min-h-[240px] w-full resize-y rounded-xl border border-zinc-300 bg-white p-4 font-mono text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500 sm:min-h-[320px] dark:border-zinc-700 dark:bg-zinc-900"
+        className="min-h-60 w-full resize-y rounded-xl border border-zinc-300 bg-white p-4 font-mono text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500 sm:min-h-80 dark:border-zinc-700 dark:bg-zinc-900"
         required
       />
 
@@ -202,7 +202,7 @@ export default function PasteEditor() {
             multiple
             disabled={loading}
             onChange={(e) => onSelectFiles(e.target.files)}
-            className="block w-full max-w-[220px] text-xs file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-xs file:font-medium hover:file:bg-zinc-200 dark:file:bg-zinc-800 dark:hover:file:bg-zinc-700"
+            className="block w-full max-w-55 text-xs file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-xs file:font-medium hover:file:bg-zinc-200 dark:file:bg-zinc-800 dark:hover:file:bg-zinc-700"
           />
         </label>
         {files.length > 0 && (
