@@ -1,7 +1,8 @@
-"use client";
+  "use client";
 
 import { useState } from "react";
 import { upload } from "@vercel/blob/client";
+import { X } from "lucide-react";
 import CopyButton from "./copy-button";
 import PasswordInput from "./password-input";
 import {
@@ -21,21 +22,35 @@ const EXPIRY_OPTIONS = [
 ] as const;
 
 type CreateResponse = { code: string; url: string };
-type FileMeta = {
-  pathname: string;
-  filename: string;
-  mime: string;
-  size: number;
-  iv: string;
-  authTag: string;
-  compression: "deflate" | "none";
-};
 
 function formatBytes(n: number): string {
   if (n >= 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)} MB`;
   if (n >= 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${n} B`;
 }
+
+/**
+ * Runs `fn` over `items` with at most `limit` concurrent promises. Results are
+ * collected in input order.
+ */
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i], i);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
+const UPLOAD_CONCURRENCY = 3;
 
 export default function PasteEditor() {
   const [content, setContent] = useState("");
@@ -49,9 +64,13 @@ export default function PasteEditor() {
 
   const totalBytes = files.reduce((sum, f) => sum + f.size, 0);
 
-  function onSelectFiles(list: FileList | null) {
+  function onSelectFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const list = e.target.files;
     if (!list) return;
     const next = Array.from(list);
+    // Reset the native input immediately so its "N files" label doesn't keep
+    // a stale count after files are removed from the list below.
+    e.target.value = "";
     for (const f of next) {
       if (f.size > MAX_FILE_BYTES) {
         setError(`"${f.name}" exceeds the 50 MB per-file limit`);
@@ -100,28 +119,34 @@ export default function PasteEditor() {
         keyForBody = bytesToBase64(key);
       }
 
-      const fileMeta: FileMeta[] = [];
-      for (const file of files) {
-        const { bytes, meta } = await prepareFileForUpload(key, file);
-        const blob = await upload(
-          `files/${crypto.randomUUID()}`,
-          new Blob([bytes]),
-          {
-            access: "private",
-            contentType: "application/octet-stream",
-            handleUploadUrl: "/api/pastes/upload-token",
-          }
-        );
-        fileMeta.push({
-          pathname: blob.pathname,
-          filename: meta.name,
-          mime: meta.mime,
-          size: meta.size,
-          iv: meta.ivB64,
-          authTag: meta.authTagB64,
-          compression: meta.compression,
-        });
-      }
+      const prepared = await Promise.all(
+        files.map((f) => prepareFileForUpload(key, f))
+      );
+
+      const fileMeta = await mapWithConcurrency(
+        prepared,
+        UPLOAD_CONCURRENCY,
+        async ({ bytes, meta }) => {
+          const blob = await upload(
+            `files/${crypto.randomUUID()}`,
+            new Blob([bytes]),
+            {
+              access: "private",
+              contentType: "application/octet-stream",
+              handleUploadUrl: "/api/pastes/upload-token",
+            }
+          );
+          return {
+            pathname: blob.pathname,
+            filename: meta.name,
+            mime: meta.mime,
+            size: meta.size,
+            iv: meta.ivB64,
+            authTag: meta.authTagB64,
+            compression: meta.compression,
+          };
+        }
+      );
 
       const res = await fetch("/api/pastes", {
         method: "POST",
@@ -197,40 +222,55 @@ export default function PasteEditor() {
       <div className="flex flex-col gap-2 rounded-xl border border-dashed border-zinc-300 p-4 dark:border-zinc-700">
         <label className="flex cursor-pointer items-center justify-between gap-3 text-sm">
           <span className="font-medium">Attachments (optional)</span>
+          <span className="inline-flex items-center gap-2 rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-medium transition hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800">
+            {files.length > 0
+              ? `${files.length} file${files.length > 1 ? "s" : ""} selected`
+              : "Choose files"}
+          </span>
           <input
             type="file"
             multiple
             disabled={loading}
-            onChange={(e) => onSelectFiles(e.target.files)}
-            className="block w-full max-w-55 text-xs file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-xs file:font-medium hover:file:bg-zinc-200 dark:file:bg-zinc-800 dark:hover:file:bg-zinc-700"
+            onChange={(e) => onSelectFiles(e)}
+            className="sr-only"
           />
         </label>
         {files.length > 0 && (
-          <ul className="mt-1 flex flex-col gap-1">
+          <>
+            <ul className="mt-1 flex flex-col gap-1">
             {files.map((f, i) => (
               <li
                 key={`${f.name}-${i}`}
-                className="flex items-center justify-between gap-2 rounded-md bg-zinc-50 px-2 py-1 text-xs dark:bg-zinc-800/60"
+                className="flex items-center gap-2 rounded-md bg-zinc-50 px-2 py-1.5 text-xs dark:bg-zinc-800/60"
               >
-                <span className="min-w-0 truncate font-mono">{f.name}</span>
-                <span className="shrink-0 text-zinc-500 dark:text-zinc-400">
+                <span className="min-w-0 flex-1 truncate font-mono">{f.name}</span>
+                <span className="w-16 shrink-0 text-right tabular-nums text-zinc-500 dark:text-zinc-400">
                   {formatBytes(f.size)}
                 </span>
                 <button
                   type="button"
                   onClick={() => removeFile(i)}
-                  className="shrink-0 text-zinc-400 hover:text-red-500"
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-zinc-400 transition hover:text-red-500"
                   aria-label={`Remove ${f.name}`}
                 >
-                  ×
+                  <X size={14} />
                 </button>
               </li>
             ))}
-            <li className="pt-1 text-xs text-zinc-500 dark:text-zinc-400">
-              {files.length} file{files.length > 1 ? "s" : ""} ·{" "}
-              {formatBytes(totalBytes)} total (max 50 MB/file, 100 MB total)
+            <li className="flex items-center gap-2 px-2 py-1 text-xs text-zinc-500 dark:text-zinc-400">
+              <span className="min-w-0 flex-1">
+                {files.length} file{files.length > 1 ? "s" : ""}
+              </span>
+              <span className="w-16 shrink-0 text-right tabular-nums">
+                {formatBytes(totalBytes)} total
+              </span>
+              <span className="w-6 shrink-0" aria-hidden="true" />
             </li>
           </ul>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            Max 50 MB/file, 100 MB per paste
+          </p>
+          </>
         )}
       </div>
 

@@ -1,8 +1,7 @@
 import { eq, sql, inArray } from "drizzle-orm";
-import { del as blobDel } from "@vercel/blob";
 import { db, schema } from "@/db";
 import type { Paste, NewPaste, Attachment, NewAttachment } from "@/db/schema";
-import { generateUniqueCode, shortId } from "./ids";
+import { generateUniqueCode } from "./ids";
 
 const EXPIRY_MS: Record<string, number> = {
   "1h": 60 * 60 * 1000,
@@ -55,8 +54,8 @@ export async function createPaste(args: CreatePasteArgs): Promise<Paste> {
     views: 0,
   };
 
-  await d.insert(schema.pastes).values(row);
-  return (await getPasteByCode(code))!;
+  const rows = await d.insert(schema.pastes).values(row).returning();
+  return rows[0];
 }
 
 export async function getPasteByCode(code: string): Promise<Paste | null> {
@@ -148,11 +147,14 @@ export async function addAttachments(
 /**
  * Deletes the Vercel Blob object backing a single attachment. Returns true if
  * the blob was deleted, false if no token is configured / blob missing.
+ * The blob SDK is imported lazily to keep the create/read paste route bundles
+ * small (it pulls in a large dependency graph).
  */
 export async function deleteBlob(blobPath: string): Promise<boolean> {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return false;
   try {
-    await blobDel(blobPath);
+    const { del } = await import("@vercel/blob");
+    await del(blobPath);
     return true;
   } catch {
     return false;
