@@ -14,11 +14,15 @@ import {
 import { MAX_FILE_BYTES, MAX_FILES_PER_PASTE, MAX_PASTE_TOTAL_BYTES } from "@/lib/validation";
 
 const EXPIRY_OPTIONS = [
-  { value: "never", label: "Never expire" },
+  { value: "5min", label: "5 minutes" },
+  { value: "10min", label: "10 minutes" },
+  { value: "30min", label: "30 minutes" },
   { value: "1h", label: "1 hour" },
-  { value: "24h", label: "24 hours" },
-  { value: "7d", label: "7 days" },
-  { value: "30d", label: "30 days" },
+  { value: "3h", label: "3 hours" },
+  { value: "6h", label: "6 hours" },
+  { value: "12h", label: "12 hours" },
+  { value: "1d", label: "1 day" },
+  { value: "3d", label: "3 days" },
 ] as const;
 
 type CreateResponse = { code: string; url: string };

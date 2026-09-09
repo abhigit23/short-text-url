@@ -4,10 +4,15 @@ import type { Paste, NewPaste, Attachment, NewAttachment } from "@/db/schema";
 import { generateUniqueCode } from "./ids";
 
 const EXPIRY_MS: Record<string, number> = {
+  "5min": 5 * 60 * 1000,
+  "10min": 10 * 60 * 1000,
+  "30min": 30 * 60 * 1000,
   "1h": 60 * 60 * 1000,
-  "24h": 24 * 60 * 60 * 1000,
-  "7d": 7 * 24 * 60 * 60 * 1000,
-  "30d": 30 * 24 * 60 * 60 * 1000,
+  "3h": 3 * 60 * 60 * 1000,
+  "6h": 6 * 60 * 60 * 1000,
+  "12h": 12 * 60 * 60 * 1000,
+  "1d": 24 * 60 * 60 * 1000,
+  "3d": 3 * 24 * 60 * 60 * 1000,
 };
 
 export type CreatePasteArgs = {

@@ -1,6 +1,16 @@
 import { z } from "zod";
 
-export const EXPIRY_OPTIONS = ["1h", "24h", "7d", "30d", "never"] as const;
+export const EXPIRY_OPTIONS = [
+  "5min",
+  "10min",
+  "30min",
+  "1h",
+  "3h",
+  "6h",
+  "12h",
+  "1d",
+  "3d",
+] as const;
 export type ExpiryOption = (typeof EXPIRY_OPTIONS)[number];
 
 export const MAX_CONTENT_BYTES = 1_000_000; // 1 MB
