@@ -38,6 +38,7 @@ export async function GET(
   }
 
   if (paste.expiresAt && paste.expiresAt.getTime() < Date.now()) {
+    await deleteAttachmentsBlobs(code);
     await deletePaste(code);
     return NextResponse.json({ error: "Expired" }, { status: 404 });
   }

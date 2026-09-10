@@ -101,21 +101,30 @@ export async function incrementViews(code: string): Promise<void> {
  */
 export async function deleteExpiredPastes(): Promise<number> {
   if (!db) return 0;
-  const expired = await db
-    .select()
-    .from(schema.pastes)
-    .where(sql`${schema.pastes.expiresAt} < now()`);
-  for (const p of expired) {
-    await deleteAttachmentsBlobs(p.code);
+  const BATCH_SIZE = 50;
+  let totalDeleted = 0;
+
+  while (true) {
+    const expired = await db
+      .select({ code: schema.pastes.code })
+      .from(schema.pastes)
+      .where(sql`${schema.pastes.expiresAt} < now()`)
+      .limit(BATCH_SIZE);
+
+    if (expired.length === 0) break;
+
+    for (const p of expired) {
+      await deleteAttachmentsBlobs(p.code);
+    }
+
+    const res = await db
+      .delete(schema.pastes)
+      .where(inArray(schema.pastes.code, expired.map((p) => p.code)));
+
+    totalDeleted += Number(res.count);
   }
-  const res = await db
-    .delete(schema.pastes)
-    .where(
-      expired.length > 0
-        ? inArray(schema.pastes.code, expired.map((p) => p.code))
-        : sql`${schema.pastes.expiresAt} < now()`
-    );
-  return Number(res.count);
+
+  return totalDeleted;
 }
 
 export async function getAttachmentsByCode(code: string): Promise<Attachment[]> {

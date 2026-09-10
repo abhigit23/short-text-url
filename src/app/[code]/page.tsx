@@ -1,6 +1,10 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getPasteByCode, deletePaste } from "@/lib/paste-service";
+import {
+  getPasteByCode,
+  deletePaste,
+  deleteAttachmentsBlobs,
+} from "@/lib/paste-service";
 import PasswordGate from "@/components/password-gate";
 import PasteReveal from "@/components/paste-reveal";
 
@@ -29,6 +33,7 @@ export default async function PastePage({
   if (!paste) notFound();
 
   if (paste.expiresAt && paste.expiresAt.getTime() < Date.now()) {
+    await deleteAttachmentsBlobs(code);
     await deletePaste(code);
     notFound();
   }

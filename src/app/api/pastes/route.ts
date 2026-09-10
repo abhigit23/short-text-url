@@ -8,7 +8,7 @@ import {
   deriveKeyFromPassword,
   KDF_ITERATIONS,
 } from "@/lib/crypto";
-import { createPaste, addAttachments } from "@/lib/paste-service";
+import { createPaste, addAttachments, deleteBlob, deletePaste } from "@/lib/paste-service";
 import { checkCreateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -123,6 +123,10 @@ export async function POST(req: NextRequest) {
       );
     } catch (e) {
       console.error("addAttachments failed", e);
+      for (const f of files) {
+        await deleteBlob(f.pathname);
+      }
+      await deletePaste(paste.code);
       return NextResponse.json(
         { error: "Failed to save attachments" },
         { status: 500 }
